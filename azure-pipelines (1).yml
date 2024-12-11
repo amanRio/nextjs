@@ -1,0 +1,45 @@
+# Node.js
+# Build a general Node.js project with npm.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+ zipFile: 'nextjs-app.zip'
+
+steps:
+
+- task: NodeTool@0
+  inputs:
+    versionSpec: '20.x'
+  displayName: 'Install Node.js'
+
+- script: |
+    npm install
+    npm run build
+  displayName: 'npm install and build'
+
+- script: |
+      mkdir deploy
+      cp -r .next public package.json package-lock.json deploy/
+      cd deploy
+      zip -r ../$(zipFile) .
+  displayName: 'Prepare Deployment ZIP'
+
+- task: PublishPipelineArtifact@1
+  inputs:
+   targetPath: '$(Pipeline.Workspace)'
+   artifact: 'build-artifact'
+   publishLocation: 'pipeline'
+
+- task: AzureWebApp@1
+  inputs:
+   azureSubscription: 'Your-Service-Connection-Name' # Azure service connection in Azure DevOps
+   appType: 'webAppLinux' # Use 'webApp' for Windows App Service
+   appName: '$(appServiceName)'
+   package: '$(Pipeline.Workspace)/$(zipFile)'
